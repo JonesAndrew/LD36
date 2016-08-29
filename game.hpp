@@ -4,6 +4,8 @@
 #include <iostream>
 #include <math.h>
 #include <memory>
+#include <fstream>
+#include <sstream> 
 
 #include "scene.hpp"
 #include "textureLoader.hpp"
@@ -122,6 +124,7 @@ class Game : public Scene
     bool woop;
 
     sf::Sprite gui;
+    sf::Sprite title;
 public:
     std::vector<std::shared_ptr<Actor>> actors;
     std::shared_ptr<Player> player;
@@ -131,6 +134,9 @@ public:
     bool transitioning;
     int dir;
     int cord;
+
+    Room *rooms[4][4];
+    sf::Vector2i roomPos;
 
     sf::Music music;
 
@@ -685,6 +691,10 @@ public:
     }
 };
 
+class MummyBall {
+
+};
+
 class Doot : public Enemy {
     int runs;
     int cd;
@@ -798,7 +808,6 @@ struct Node {
 };
 
 class Room {
-    int values[w][h];
     std::vector<Node> nodes;
     sf::Sprite sprite;
     Game *game;
@@ -807,17 +816,37 @@ class Room {
 
 public:
 
+    std::string name;
+    bool cleared;
+    int values[w][h];
+
     void open() {
         if (!o) {
             SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
         }
 
-        values[(w-1)/2][0] = 12;
-        values[0][(h-1)/2] = 13;
-        values[(w-1)/2][h-1] = 15;
-        values[w-1][(h-1)/2] = 14; 
+        for (int x=0;x<w;x++) {
+            for (int y=0;y<h;y++) {
+                if (values[x][y] == 24) {
+                    values[x][y] = 12;
+                }
+
+                if (values[x][y] == 27) {
+                    values[x][y] = 13;
+                }
+
+                if (values[x][y] == 35) {
+                    values[x][y] = 15;
+                }
+
+                if (values[x][y] == 32) {
+                    values[x][y] = 14;
+                }
+            }
+        }
 
         o = true;
+        cleared = true;
     }
 
     void close() {
@@ -825,10 +854,25 @@ public:
             SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
         }
 
-        values[(w-1)/2][0] = 24;
-        values[0][(h-1)/2] = 27;
-        values[(w-1)/2][h-1] = 35;
-        values[w-1][(h-1)/2] = 32;
+        for (int x=0;x<w;x++) {
+            for (int y=0;y<h;y++) {
+                if (values[x][y] == 12) {
+                    values[x][y] = 24;
+                }
+
+                if (values[x][y] == 13) {
+                    values[x][y] = 27;
+                }
+
+                if (values[x][y] == 15) {
+                    values[x][y] = 35;
+                }
+
+                if (values[x][y] == 14) {
+                    values[x][y] = 32;
+                }
+            }
+        }
 
         o = false;
     }
@@ -845,63 +889,36 @@ public:
         } 
     }
 
-    Room(Game *g) {
+    Room(Game *g,std::string r) {
+        name = r;
+
         game = g;
 
         sprite = TextureLoader::getInstance()->getSprite("tiles.png");
 
         for (int x=0;x<w;x++) {
             for (int y=0;y<h;y++) {
-                values[x][y] = 3;
-
-                if (x == 0) {
-                    values[x][y] = 9;
-                }
-
-                if (y == 0) {
-                    values[x][y] = 8;
-                }
-
-                if (x == w - 1) {
-                    values[x][y] = 10;
-                }
-
-                if (y == h - 1) {
-                    values[x][y] = 11;
-                }
-
-                if (x == 0 && y == 0) {
-                    values[x][y] = 4;
-                }
-
-                if (x == w - 1 && y == 0) {
-                    values[x][y] = 5;
-                }
-
-                if (x == 0 && y == h - 1) {
-                    values[x][y] = 6;
-                }
-
-                if (x == w - 1 && y == h - 1) {
-                    values[x][y] = 7;
-                }
-
                 nodes.emplace_back();
                 nodes.back().point = sf::Vector2i(x,y);
             }
         }
 
-        // values[5][3] = 16;
-        // values[6][3] = 20;
-        // values[7][3] = 17;
-
-        // values[5][4] = 21;
-        // values[6][4] = 1;
-        // values[7][4] = 22;
-
-        // values[5][5] = 18;
-        // values[6][5] = 23;
-        // values[7][5] = 19;
+        std::ifstream file("levels/"+r+".csv");
+        std::string line; 
+        int col = 0;
+        int row = 0;
+        while( std::getline( file, line ) )
+        {
+            std::istringstream iss( line );
+            std::string result;
+            while( std::getline( iss, result, ',' ) )
+            {
+                values[col][row] = atoi( result.c_str() );
+                col = col+1;
+            }
+            row = row+1;
+            col = 0;
+        }
 
         for (int i=0;i<nodes.size();i++) {
             for (int t=i+1;t<nodes.size();t++) {
@@ -914,7 +931,8 @@ public:
         }
 
         o = true;
-        open();
+        cleared = false;
+        // open();
     }
 
     void update(Actor &actor,bool stepX) {
@@ -931,6 +949,10 @@ public:
                     int y = 4;
 
                     for (int x=0;x<w;x+=w-1) {
+                        if (values[x][y] == 9 || values[x][y] == 10) {
+                            continue;
+                        }
+
                         if (actor.pos.x-16 >= x*32+32) {
                             continue;
                         }
@@ -954,6 +976,10 @@ public:
                     int x = 6;
                     
                     for (int y=0;y<h;y+=h-1) {
+                        if (values[x][y] == 8 || values[x][y] == 11) {
+                            continue;
+                        }
+
                         if (actor.pos.x-16 >= x*32+32) {
                             continue;
                         }
@@ -982,11 +1008,11 @@ public:
             for (int x=0;x<w;x++) {
                 for (int y=0;y<h;y++) {
                     if (values[x][y] >= 20 && values[x][y] <= 23) {
-                        if (actor.pos.x-16 >= x*32+32) {
+                        if (actor.pos.x-10 >= x*32+32) {
                             continue;
                         }
 
-                        if (actor.pos.x+16 <= x*32) {
+                        if (actor.pos.x+10 <= x*32) {
                             continue;
                         }
 
@@ -1021,12 +1047,12 @@ public:
 
         for (int x=0;x<w;x++) {
             for (int y=0;y<h;y++) {
-                if (values[x][y] != 3) {
-                    if (actor.pos.x-16 >= x*32+32) {
+                if (values[x][y] != 3 && values[x][y] != 2) {
+                    if (actor.pos.x-10 >= x*32+32) {
                         continue;
                     }
 
-                    if (actor.pos.x+16 <= x*32) {
+                    if (actor.pos.x+10 <= x*32) {
                         continue;
                     }
 
@@ -1042,9 +1068,9 @@ public:
 
                     if (stepX) {
                         if (dif.x > 0) {
-                            actor.pos.x = x*32+48;
+                            actor.pos.x = x*32+42;
                         } else {
-                            actor.pos.x = x*32-16;
+                            actor.pos.x = x*32-10;
                         }
                     } else {
                         if (dif.y > 0) {
@@ -1060,20 +1086,25 @@ public:
 
     sf::Vector2f findPath(sf::Vector2f a, sf::Vector2f b) {
         double offset = 15.9999;
+        double xofffset = 9.9999;
 
-        if (values[int((b.x+offset)/32)][int(b.y/32)] != 3) {
+        if (values[int((b.x+xofffset)/32)][int(b.y/32)] != 3 && 
+            values[int((b.x+xofffset)/32)][int(b.y/32)] != 2) {
             return sf::Vector2f(-1000,-1000);
         }
 
-        if (values[int((b.x-offset)/32)][int(b.y/32)] != 3) {
+        if (values[int((b.x-xofffset)/32)][int(b.y/32)] != 3 &&
+            values[int((b.x-xofffset)/32)][int(b.y/32)] != 2) {
             return sf::Vector2f(-1000,-1000);
         }
 
-        if (values[int((b.x+offset)/32)][int((b.y+offset)/32)] != 3) {
+        if (values[int((b.x+xofffset)/32)][int((b.y+offset)/32)] != 3 &&
+            values[int((b.x+xofffset)/32)][int((b.y+offset)/32)] != 2) {
             return sf::Vector2f(-1000,-1000);
         }
 
-        if (values[int((b.x-offset)/32)][int((b.y+offset)/32)] != 3) {
+        if (values[int((b.x-xofffset)/32)][int((b.y+offset)/32)] != 3 &&
+            values[int((b.x-xofffset)/32)][int((b.y+offset)/32)] != 2) {
             return sf::Vector2f(-1000,-1000);
         }
 
@@ -1105,7 +1136,7 @@ public:
 
             for (int i=0;i<current->adjancent.size();i++) {
                 Node *adj = current->adjancent[i];
-                if (adj->distance == -1 && values[adj->point.x][adj->point.y] == 3) {
+                if (adj->distance == -1 && (values[adj->point.x][adj->point.y] == 3 || values[adj->point.x][adj->point.y] == 2)) {
                     current->adjancent[i]->distance = 0;
                     current->adjancent[i]->parent = current;
 
@@ -1125,6 +1156,10 @@ public:
         std::vector<sf::Vector2f> points;
         points.emplace_back(a.x,a.y);
         points.emplace_back(b.x,b.y);
+
+        if (final == nullptr) {
+            return sf::Vector2f(-1000,-1000); 
+        }
         final = final->parent;
 
         while (final != nullptr) {
@@ -1146,7 +1181,7 @@ public:
 
             for (int x = sx-1; x <= ex+1; x++) {
                 for (int y = sy-1; y <= ey+1; y++) {
-                    if (values[x][y] == 3) {
+                    if (values[x][y] == 3 || values[x][y] == 2) {
                         continue;
                     }
 
@@ -1156,29 +1191,29 @@ public:
                     ymin = y*32;
                     ymax = ymin + 32;
 
-                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x-offset,points[checkPoint].y,
-                                                       points[currentPoint+1].x-offset,points[currentPoint+1].y)) {
+                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x-xofffset,points[checkPoint].y,
+                                                       points[currentPoint+1].x-xofffset,points[currentPoint+1].y)) {
 
                         walk = false;
                         break;
                     }
 
-                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x+offset,points[checkPoint].y,
-                                                       points[currentPoint+1].x+offset,points[currentPoint+1].y)) {
+                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x+xofffset,points[checkPoint].y,
+                                                       points[currentPoint+1].x+xofffset,points[currentPoint+1].y)) {
 
                         walk = false;
                         break;
                     }
 
-                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x-offset,points[checkPoint].y+offset,
-                                                       points[currentPoint+1].x-offset,points[currentPoint+1].y+offset)) {
+                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x-xofffset,points[checkPoint].y+offset,
+                                                       points[currentPoint+1].x-xofffset,points[currentPoint+1].y+offset)) {
 
                         walk = false;
                         break;
                     }
 
-                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x+offset,points[checkPoint].y+offset,
-                                                       points[currentPoint+1].x+offset,points[currentPoint+1].y+offset)) {
+                    if (CohenSutherlandLineClipAndDraw(points[checkPoint].x+xofffset,points[checkPoint].y+offset,
+                                                       points[currentPoint+1].x+xofffset,points[currentPoint+1].y+offset)) {
 
                         walk = false;
                         break;

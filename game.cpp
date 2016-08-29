@@ -14,8 +14,10 @@ void Actor::takeDamage(int damage,sf::Vector2f p) {
         hp -= damage;
         if (hp <= 0) {
             SoundPlayer::getInstance()->playSound("monsterDyingSFX.wav");
-            game->actors.push_back(std::make_shared<Heart>(game));
-            game->actors.back()->pos = pos;
+            if (rand() % 8 == 0) {
+                game->actors.push_back(std::make_shared<Heart>(game));
+                game->actors.back()->pos = pos;
+            }
         } else {
             SoundPlayer::getInstance()->playSound("monsterHurtSFX.wav");
 
@@ -90,8 +92,6 @@ void Player::update() {
             dif.y /= mag;
 
             mag = (48-fallCount)*1.5+4;
-
-            std::cout<<mag<<"\n";
 
             dif.x *= mag;
             dif.y *= mag;
@@ -190,20 +190,27 @@ void Game::transition(int d) {
 
         target = view.getCenter();
 
-        nextRoom = new Room(this);
         if (d == 0) {
+            roomPos += sf::Vector2i(1,0);
+            nextRoom = rooms[roomPos.x][roomPos.y];
             target.x += 480;
             startMag = 480;
             nextRoom->pos.x = 480;
         } else if (d == 1) {
+            roomPos += sf::Vector2i(0,1);
+            nextRoom = rooms[roomPos.x][roomPos.y];
             target.y += 480; 
             startMag = 480;
             nextRoom->pos.y = 480;
         } else if (d == 2) {
+            roomPos += sf::Vector2i(-1,0);
+            nextRoom = rooms[roomPos.x][roomPos.y];
             target.x -= 480;
             startMag = 480;
             nextRoom->pos.x = -480;
         } else {
+            roomPos += sf::Vector2i(0,-1);
+            nextRoom = rooms[roomPos.x][roomPos.y];
             target.y -= 480;
             startMag = 480;
             nextRoom->pos.y = -480;
@@ -222,6 +229,8 @@ Game::Game() {
 
     gui = TextureLoader::getInstance()->getSprite("heart.png");
 
+    title = TextureLoader::getInstance()->getSprite("KasText.png");
+
     music.setLoop(true);
     music.openFromFile("sfx/coolingoffhotchillymeal.wav");
     music.play();
@@ -238,6 +247,7 @@ Game::Game() {
 
     player = std::make_shared<Player>(this);
     actors.push_back(player);
+    actors.back()->pos = sf::Vector2f(48,7*32+16);
     // actors.push_back(std::make_shared<Mummy>(this));
     // actors.back()->pos = sf::Vector2f(150,200);
 
@@ -253,15 +263,21 @@ Game::Game() {
 
     SoundPlayer::getInstance();
 
-    room = new Room(this);
-    nextRoom = nullptr;
+    for (int i=0;i<2;i++) {
+        rooms[0][i+1] = new Room(this,"13");
+    }
 
-    room->findPath(sf::Vector2f(250,200),sf::Vector2f(144,176));
+    rooms[1][2] = new Room(this,"TitleRoom");
+    rooms[0][0] = new Room(this,"bossroom");
+    rooms[1][3] = new Room(this,"14");
+    rooms[0][3] = new Room(this,"12");
+
+    roomPos = sf::Vector2i(1,2);
+    room = rooms[1][2];
+    nextRoom = nullptr;
 
     transitioning = false;
     amount = 0;
-    // while(true){}
-    std::cout<<"woop\n";
 
     woop = true;
 }
@@ -381,30 +397,6 @@ Scene *Game::update() {
 
             transitioning = false;
 
-            // actors.push_back(std::make_shared<Bat>(this));
-            // actors.back()->pos = sf::Vector2f(100,200);
-            // actors.push_back(std::make_shared<Bat>(this));
-            // actors.back()->pos = sf::Vector2f(150,200);
-            // actors.push_back(std::make_shared<Bat>(this));
-            // actors.back()->pos = sf::Vector2f(200,200);
-
-            // actors.push_back(std::make_shared<Mummy>(this));
-            // actors.back()->pos = sf::Vector2f(150,100);
-            // actors.push_back(std::make_shared<Mummy>(this));
-            // actors.back()->pos = sf::Vector2f(200,100);
-
-            actors.push_back(std::make_shared<Doot>(this));
-            actors.back()->pos = sf::Vector2f(48,32);
-
-            actors.push_back(std::make_shared<Doot>(this));
-            actors.back()->pos = sf::Vector2f(12*32+16,32);
-
-            actors.push_back(std::make_shared<Doot>(this));
-            actors.back()->pos = sf::Vector2f(48,7*32+16);
-
-            actors.push_back(std::make_shared<Doot>(this));
-            actors.back()->pos = sf::Vector2f(12*32+16,7*32+16);
-
             if (dir == 0) {
                 player->pos = sf::Vector2f(48, 4*32 + 16);
             } else if (dir == 1) {
@@ -415,12 +407,66 @@ Scene *Game::update() {
                 player->pos = sf::Vector2f(32*6 + 16, 7*32+16);
             }
 
-            delete room;
-
             room = nextRoom;
             nextRoom = nullptr;
 
             room->pos = sf::Vector2f(0,0);
+
+            int count=rand()%3+1;
+            int bigCount = count + rand()%3;
+
+            int c=0;
+
+            if (!room->cleared) {
+                if (room->name == "bossroom") {
+                    actors.push_back(std::make_shared<Doot>(this));
+                    actors.back()->pos = sf::Vector2f(48,32);
+
+                    actors.push_back(std::make_shared<Doot>(this));
+                    actors.back()->pos = sf::Vector2f(12*32+16,32);
+
+                    actors.push_back(std::make_shared<Doot>(this));
+                    actors.back()->pos = sf::Vector2f(48,7*32+16);
+
+                    actors.push_back(std::make_shared<Doot>(this));
+                    actors.back()->pos = sf::Vector2f(12*32+16,7*32+16);
+                } else {
+                    while (c<count) {
+                        int x = rand() % w;
+                        int y = rand() % h;
+
+                        if (room->values[x][y] == 3 || room->values[x][y] == 2) {
+                            sf::Vector2f p = sf::Vector2f(x*32+16,y*32+16);
+
+                            sf::Vector2f dif = player->pos - p;
+
+                            double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
+
+                            if (mag >= 64) {
+                                actors.push_back(std::make_shared<Mummy>(this));
+                                actors.back()->pos = p;
+                                c++;
+                            }
+                        }
+                    }
+                    while (c<bigCount) {
+                        int x = rand() % w;
+                        int y = rand() % h;
+
+                        sf::Vector2f p = sf::Vector2f(x*32+16,y*32+16);
+
+                        sf::Vector2f dif = player->pos - p;
+
+                        double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
+
+                        if (mag >= 64) {
+                            actors.push_back(std::make_shared<Bat>(this));
+                            actors.back()->pos = p;
+                            c++;
+                        }
+                    }
+                }
+            }
 
         } else {
             dif.x /= mag;
@@ -512,6 +558,11 @@ void Game::render(sf::RenderWindow &window) {
 
     for (auto &spell : spells) {
         spell.render(window);
+    }
+
+    if (room->name ==  "TitleRoom") {
+        title.setPosition(65,0);
+        window.draw(title);
     }
 
     window.setView(guiView);

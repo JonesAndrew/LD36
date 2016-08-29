@@ -17,9 +17,13 @@ SoundPlayer *SoundPlayer::instance = NULL;
 SoundPlayer *SoundPlayer::getInstance() {
     if (!instance) {
         instance = new SoundPlayer();
-        instance->loadSound("hit.wav");
-        instance->loadSound("shoot.wav");
-        instance->loadSound("explosion.wav");
+        instance->loadSound("twangsitar1SFX.wav");
+        instance->loadSound("twangsitar2SFX.wav");
+        instance->loadSound("twangsitar3SFX.wav");
+        instance->loadSound("twangsitar4SFX.wav");
+        instance->loadSound("getHurtSFX.wav");
+        instance->loadSound("monsterDyingSFX.wav");
+        instance->loadSound("monsterHurtSFX.wav");
     }
     return instance;
 }
@@ -29,8 +33,16 @@ void SoundPlayer::loadSound(std::string file) {
 
     if (sound == NULL) {
         sound = new sf::SoundBuffer();
-        sound->loadFromFile("sounds/"+file);
+        sound->loadFromFile("sfx/"+file);
         sounds[file] = sound;
+    }
+}
+
+void SoundPlayer::clearSounds() {
+    for (size_t i=0;i<playing_sounds.size();i++) {
+        delete playing_sounds[i];
+        playing_sounds.erase(playing_sounds.begin()+i);
+        i--;
     }
 }
 
@@ -47,7 +59,7 @@ void SoundPlayer::playSound(std::string file) {
 
     if (sound == NULL) {
         sound = new sf::SoundBuffer();
-        sound->loadFromFile("sounds/"+file);
+        sound->loadFromFile("sfx/"+file);
         sounds[file] = sound;
     }
 

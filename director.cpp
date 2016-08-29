@@ -3,10 +3,12 @@
 #include <iostream>
 
 void Director::startWithScene(Scene *scene) {
-    window = new sf::RenderWindow(sf::VideoMode(480,270),"LD36");
+    window = new sf::RenderWindow(sf::VideoMode(480*3,300*3),"Lost Kas");
     window->setVerticalSyncEnabled(true);
+    window->setKeyRepeatEnabled(false);
 
     current = scene;
+    nextScene = NULL;
 
     sf::Clock timer;
 
@@ -14,6 +16,12 @@ void Director::startWithScene(Scene *scene) {
     double dt = 1.0 / 60.0;
 
     while (true) {
+
+        if (nextScene != NULL) {
+            delete current;
+            current = nextScene;
+            nextScene = NULL;
+        }
 
         sf::Event event;
         bool exit = false;
@@ -34,7 +42,7 @@ void Director::startWithScene(Scene *scene) {
             acc = 0.5;
 
         while (acc > 0) {
-            current->update();
+            nextScene = current->update();
             acc -= dt;
         }
 
@@ -42,4 +50,6 @@ void Director::startWithScene(Scene *scene) {
         current->render(*window);
         window->display();
     }
+
+    delete current;
 }

@@ -20,5 +20,5 @@ public:
     static SoundPlayer *getInstance();
     void playSound(std::string file);
     void loadSound(std::string file);
-
+    void clearSounds();
 };

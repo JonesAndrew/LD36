@@ -3,7 +3,7 @@
 #include <iostream>
 
 void Director::startWithScene(Scene *scene) {
-    window = new sf::RenderWindow(sf::VideoMode(480*3,300*3),"Lost Kas");
+    window = new sf::RenderWindow(sf::VideoMode(480*2,300*2),"Lost Kas");
     window->setVerticalSyncEnabled(true);
     window->setKeyRepeatEnabled(false);
 

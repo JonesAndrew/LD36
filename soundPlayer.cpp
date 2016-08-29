@@ -24,6 +24,8 @@ SoundPlayer *SoundPlayer::getInstance() {
         instance->loadSound("getHurtSFX.wav");
         instance->loadSound("monsterDyingSFX.wav");
         instance->loadSound("monsterHurtSFX.wav");
+        instance->loadSound("somethingHeavyMovesSFX.wav");
+        instance->loadSound("DootDootSFX.wav");
     }
     return instance;
 }

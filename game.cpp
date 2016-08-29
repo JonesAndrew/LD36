@@ -9,6 +9,30 @@ double xmax = 0;
 double ymin = 0;
 double ymax = 0;
 
+void Actor::takeDamage(int damage,sf::Vector2f p) {
+    if (hp > 0) {
+        hp -= damage;
+        if (hp <= 0) {
+            SoundPlayer::getInstance()->playSound("monsterDyingSFX.wav");
+            game->actors.push_back(std::make_shared<Heart>(game));
+            game->actors.back()->pos = pos;
+        } else {
+            SoundPlayer::getInstance()->playSound("monsterHurtSFX.wav");
+
+            sf::Vector2f dif = pos - p;
+            double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
+
+            dif.x /= mag;
+            dif.y /= mag;
+
+            kb = dif;
+
+            kb.x *= 3;
+            kb.y *= 3;
+        }
+    }
+}
+
 void Game::handleEvent(sf::Event event) {
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Space && !transitioning && !player->dead() && !player->breaking) {
@@ -56,7 +80,41 @@ void Player::update() {
             }
         }
 
-        if (!breaking && !game->transitioning) {
+        if (fallCount > 0) {
+            sf::Vector2f o = sprite.getOrigin();
+
+            sf::Vector2f dif = o-sf::Vector2f(16,16);
+            double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
+
+            dif.x /= mag;
+            dif.y /= mag;
+
+            mag = (48-fallCount)*1.5+4;
+
+            std::cout<<mag<<"\n";
+
+            dif.x *= mag;
+            dif.y *= mag;
+
+            sprite.setOrigin(sf::Vector2f(16,16)+dif);
+
+            fallCount--;
+            if (fallCount == 0) {
+                frameLength = 12;
+                sprite.setOrigin(16,16);
+                if (dif.x != 0 && sprite.getScale().x == -1) {
+                    takeDamage(1,pos+dif);
+                } else {
+                    takeDamage(1,pos-dif);
+                }
+
+                if (dead()) {
+                    return;
+                }
+            }
+        }
+
+        if (!breaking && !game->transitioning && fallCount <= 0) {
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
                 vel += sf::Vector2f(-1,0);
             }
@@ -164,8 +222,9 @@ Game::Game() {
 
     gui = TextureLoader::getInstance()->getSprite("heart.png");
 
-    //music.openFromFile("sfx/DanceyDungeonSOng.wav");
-    //music.play();
+    music.setLoop(true);
+    music.openFromFile("sfx/coolingoffhotchillymeal.wav");
+    music.play();
 
     srand(time(0));
 
@@ -322,17 +381,29 @@ Scene *Game::update() {
 
             transitioning = false;
 
-            actors.push_back(std::make_shared<Bat>(this));
-            actors.back()->pos = sf::Vector2f(100,200);
-            actors.push_back(std::make_shared<Bat>(this));
-            actors.back()->pos = sf::Vector2f(150,200);
-            actors.push_back(std::make_shared<Bat>(this));
-            actors.back()->pos = sf::Vector2f(200,200);
+            // actors.push_back(std::make_shared<Bat>(this));
+            // actors.back()->pos = sf::Vector2f(100,200);
+            // actors.push_back(std::make_shared<Bat>(this));
+            // actors.back()->pos = sf::Vector2f(150,200);
+            // actors.push_back(std::make_shared<Bat>(this));
+            // actors.back()->pos = sf::Vector2f(200,200);
 
-            actors.push_back(std::make_shared<Mummy>(this));
-            actors.back()->pos = sf::Vector2f(150,100);
-            actors.push_back(std::make_shared<Mummy>(this));
-            actors.back()->pos = sf::Vector2f(200,100);
+            // actors.push_back(std::make_shared<Mummy>(this));
+            // actors.back()->pos = sf::Vector2f(150,100);
+            // actors.push_back(std::make_shared<Mummy>(this));
+            // actors.back()->pos = sf::Vector2f(200,100);
+
+            actors.push_back(std::make_shared<Doot>(this));
+            actors.back()->pos = sf::Vector2f(48,32);
+
+            actors.push_back(std::make_shared<Doot>(this));
+            actors.back()->pos = sf::Vector2f(12*32+16,32);
+
+            actors.push_back(std::make_shared<Doot>(this));
+            actors.back()->pos = sf::Vector2f(48,7*32+16);
+
+            actors.push_back(std::make_shared<Doot>(this));
+            actors.back()->pos = sf::Vector2f(12*32+16,7*32+16);
 
             if (dir == 0) {
                 player->pos = sf::Vector2f(48, 4*32 + 16);
@@ -395,10 +466,11 @@ Scene *Game::update() {
                 }
 
                 for (int a=0;a<actors.size();a++) {
-                    if ((spells[i].anchor == player && actors[a] != player) ||
-                        (spells[i].anchor != player && actors[a] == player))
-                    if (actors[a] != spells[i].anchor) {
-                        spells[i].explode(*actors[a]);
+                    if (actors[a]->heart == false) {
+                        if ((spells[i].anchor == player && actors[a] != player) ||
+                            (spells[i].anchor != player && actors[a] == player)) {
+                            spells[i].explode(*actors[a]);
+                        }
                     }
                 }
 

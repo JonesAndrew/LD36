@@ -106,6 +106,7 @@ class Actor;
 class Player;
 class Spell;
 class Room;
+class Heart;
 
 class Game : public Scene
 {
@@ -154,7 +155,6 @@ const int h = 9;
 
 class Actor : public std::enable_shared_from_this<Actor> {
 protected:
-    sf::Sprite sprite;
     sf::Sprite poof;
     std::map<std::string, std::vector<sf::IntRect> > animations;
     int ft,frame;
@@ -168,8 +168,10 @@ protected:
     int frameLength;
     double speed;
 public:
+    sf::Sprite sprite;
     bool touchy;
     bool fly;
+    bool heart;
     int hp;
 
     sf::Vector2f pos;
@@ -188,6 +190,7 @@ public:
         game = g;
 
         touchy = false;
+        heart = false;
 
         poof = TextureLoader::getInstance()->getSprite("poof.png");
         poof.setOrigin(16,16);
@@ -299,27 +302,7 @@ public:
         return hp <= 0;
     }
 
-    virtual void takeDamage(int damage,sf::Vector2f p) {
-        if (hp > 0) {
-            hp -= damage;
-            if (hp <= 0) {
-                SoundPlayer::getInstance()->playSound("monsterDyingSFX.wav");
-            } else {
-                SoundPlayer::getInstance()->playSound("monsterHurtSFX.wav");
-
-                sf::Vector2f dif = pos - p;
-                double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
-
-                dif.x /= mag;
-                dif.y /= mag;
-
-                kb = dif;
-
-                kb.x *= 3;
-                kb.y *= 3;
-            }
-        }
-    }
+    virtual void takeDamage(int damage,sf::Vector2f p);
 };
 
 struct PointerCompare {
@@ -332,6 +315,7 @@ class Player : public Actor {
 public:
 
     bool breaking;
+    int fallCount;
     int breakCount;
     int nodamage;
 
@@ -361,6 +345,11 @@ public:
         animations["break"].emplace_back(64,96,32,32);
         animations["break"].emplace_back(96,96,32,32);
 
+        animations["fall"].emplace_back(96,4*32,32,32);
+        animations["fall"].emplace_back(0 ,5*32,32,32);
+        animations["fall"].emplace_back(32,5*32,32,32);
+        animations["fall"].emplace_back(64,5*32,32,32);
+
         animations["leave"].emplace_back(0 ,7*32,32,32);
         animations["leave"].emplace_back(32,7*32,32,32);
         animations["leave"].emplace_back(64,7*32,32,32);
@@ -386,6 +375,17 @@ public:
 
         breakCount = 0;
         breaking = false;
+
+        fallCount = 0;
+    }
+
+    void fall() {
+        if (fallCount <= 0) {
+            setIdle("none");
+            playAnimation("fall");
+            frameLength = 6;
+            fallCount = 48;
+        }
     }
 
     virtual void deadUpdate() {
@@ -422,7 +422,7 @@ public:
     virtual void takeDamage(int d,sf::Vector2f p) {
         if (nodamage <= 0 && hp > 0) {
             hp -= d;
-            nodamage = 20;
+            nodamage = 60;
 
             sf::Vector2f dif = pos - p;
             double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
@@ -441,9 +441,65 @@ public:
                 setIdle("skel");
                 playAnimation("dead");
 
+                game->music.stop();
                 game->music.openFromFile("sfx/GameOverSong.wav");
                 game->music.play();
             }
+        }
+    }
+};
+
+class Heart : public Actor {
+protected:
+public:
+
+    Heart(Game *g) : Actor(g) {
+        sprite = TextureLoader::getInstance()->getSprite("drop.png");
+        sprite.setOrigin(16,16);
+
+        frameLength = 6;
+
+        animations["drop"].emplace_back(0,0,32,32);
+        animations["drop"].emplace_back(32,0,32,32);
+        animations["drop"].emplace_back(64,0,32,32);
+        animations["drop"].emplace_back(96,0,32,32);
+        animations["drop"].emplace_back(128,0,32,32);
+        animations["drop"].emplace_back(160,0,32,32);
+
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+        animations["idle"].emplace_back(128,0,32,32);
+
+        animations["idle"].emplace_back(160,0,32,32);
+        animations["idle"].emplace_back(160,0,32,32);
+
+        heart = true;
+
+        setIdle("idle");
+        playAnimation("drop");
+    }
+
+    virtual void update() {
+        animUpdate();
+        sf::Vector2f dif = game->player->pos - pos;
+        double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
+
+        if (mag <= 10) {
+            game->player->hp += 1;
+            if (game->player->hp > 3) {
+                game->player->hp = 3;
+            }
+            remove = true;
         }
     }
 };
@@ -660,15 +716,35 @@ public:
 
         goal = running;
 
-        runs = rand() % 3 + 1;
+        runs = rand() % 3 + 2;
 
         sf::Vector2f dest = sf::Vector2f(rand()%(32*10)+48,rand()%(32*6)+48);
+
+        hp = 5;
 
         moveTo(dest);
     }
 
     virtual void update() {
         Enemy::update();
+
+        sf::Vector2f dif = game->player->pos - pos;
+        double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
+
+        if (mag <= 16) {
+            goal = running;
+
+            dif.x /= mag;
+            dif.y /= mag;
+
+            dif.x *= -40;
+            dif.y *= -40;
+
+            moveTo(pos+dif);
+
+            game->player->takeDamage(1,pos);
+        }
+
         if (goal == running) {
             if (target == pos) {
                 runs--;
@@ -676,9 +752,19 @@ public:
                     goal = attacking;
                     playAnimation("idle");
                     game->castSpell(shared_from_this());
-                    cd = 36;
+
+                    SoundPlayer::getInstance()->playSound("DootDootSFX.wav");
+
+                    frameLength = 3;
+
+                    cd = 9;
                 } else {
-                    sf::Vector2f dest = game->player->pos + sf::Vector2f(rand()%200-100,rand()%200-100);
+                    sf::Vector2f dest;
+                    if (runs == 1) {
+                        dest = game->player->pos + sf::Vector2f(rand()%80-40,rand()%80-40);
+                    } else {
+                        dest = sf::Vector2f(rand()%(32*10)+48,rand()%(32*6)+48);
+                    }
                     moveTo(dest);
                 }
             }
@@ -688,8 +774,10 @@ public:
                 game->castSpell(shared_from_this());
             }
             if (curr == "walk") {
+                frameLength = 12;
+
                 goal = running;
-                runs = rand() % 3 + 1;
+                runs = rand() % 3 + 2;
 
                 sf::Vector2f dest = sf::Vector2f(rand()%(32*10)+48,rand()%(32*6)+48);
                 moveTo(dest);
@@ -715,7 +803,35 @@ class Room {
     sf::Sprite sprite;
     Game *game;
 
+    bool o;
+
 public:
+
+    void open() {
+        if (!o) {
+            SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
+        }
+
+        values[(w-1)/2][0] = 12;
+        values[0][(h-1)/2] = 13;
+        values[(w-1)/2][h-1] = 15;
+        values[w-1][(h-1)/2] = 14; 
+
+        o = true;
+    }
+
+    void close() {
+        if (o) {
+            SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
+        }
+
+        values[(w-1)/2][0] = 24;
+        values[0][(h-1)/2] = 27;
+        values[(w-1)/2][h-1] = 35;
+        values[w-1][(h-1)/2] = 32;
+
+        o = false;
+    }
 
     sf::Vector2f pos;
 
@@ -770,22 +886,6 @@ public:
                     values[x][y] = 7;
                 }
 
-                if (x == (w-1)/2 && y == 0) {
-                    values[x][y] = 12;
-                }
-
-                if (y == (h-1)/2 && x == 0) {
-                    values[x][y] = 13;
-                }
-
-                if (x == (w-1)/2 && y == h - 1) {
-                    values[x][y] = 15;
-                }
-
-                if (y == (h-1)/2 && x == w - 1) {
-                    values[x][y] = 14;
-                }
-
                 nodes.emplace_back();
                 nodes.back().point = sf::Vector2i(x,y);
             }
@@ -812,55 +912,109 @@ public:
                 }
             }
         }
+
+        o = true;
+        open();
     }
 
     void update(Actor &actor,bool stepX) {
-        if (&actor == game->player.get() && game->actors.size() == 1) {
-            if (stepX) {
-                int y = 4;
+        if (&actor == game->player.get()) {
+            int total = 0;
+            for (int i=0;i<game->actors.size();i++) {
+                if (game->actors[i]->heart == true) {
+                    total += 1;
+                }
+            }
+            if (game->actors.size() - total == 1) {
+                open();
+                if (stepX) {
+                    int y = 4;
 
-                for (int x=0;x<w;x+=w-1) {
-                    if (actor.pos.x-16 >= x*32+32) {
-                        continue;
+                    for (int x=0;x<w;x+=w-1) {
+                        if (actor.pos.x-16 >= x*32+32) {
+                            continue;
+                        }
+
+                        if (actor.pos.x+16 <= x*32) {
+                            continue;
+                        }
+
+                        if (actor.pos.y+16 <= y*32) {
+                            continue;
+                        }
+
+                        if (actor.pos.y >= y*32+32) {
+                            continue;
+                        }
+
+                        game->transition(2 - x/6);
+                        return;
                     }
+                } else {
+                    int x = 6;
+                    
+                    for (int y=0;y<h;y+=h-1) {
+                        if (actor.pos.x-16 >= x*32+32) {
+                            continue;
+                        }
 
-                    if (actor.pos.x+16 <= x*32) {
-                        continue;
+                        if (actor.pos.x+16 <= x*32) {
+                            continue;
+                        }
+
+                        if (actor.pos.y+16 <= y*32) {
+                            continue;
+                        }
+
+                        if (actor.pos.y >= y*32+32) {
+                            continue;
+                        }
+
+                        game->transition(2 - y/4 + 1);
+                        return;
                     }
-
-                    if (actor.pos.y+16 <= y*32) {
-                        continue;
-                    }
-
-                    if (actor.pos.y >= y*32+32) {
-                        continue;
-                    }
-
-                    game->transition(2 - x/6);
-                    return;
                 }
             } else {
-                int x = 6;
-                
-                for (int y=0;y<h;y+=h-1) {
-                    if (actor.pos.x-16 >= x*32+32) {
-                        continue;
-                    }
+                close();
+            }
 
-                    if (actor.pos.x+16 <= x*32) {
-                        continue;
-                    }
 
-                    if (actor.pos.y+16 <= y*32) {
-                        continue;
-                    }
+            for (int x=0;x<w;x++) {
+                for (int y=0;y<h;y++) {
+                    if (values[x][y] >= 20 && values[x][y] <= 23) {
+                        if (actor.pos.x-16 >= x*32+32) {
+                            continue;
+                        }
 
-                    if (actor.pos.y >= y*32+32) {
-                        continue;
-                    }
+                        if (actor.pos.x+16 <= x*32) {
+                            continue;
+                        }
 
-                    game->transition(2 - y/4 + 1);
-                    return;
+                        if (actor.pos.y+16 <= y*32) {
+                            continue;
+                        }
+
+                        if (actor.pos.y >= y*32+32) {
+                            continue;
+                        }
+
+                        sf::Vector2f dif = actor.pos + sf::Vector2f(0,8) - sf::Vector2f(x*32+16,y*32+16);
+
+                        game->player->fall();
+                        if (stepX) {
+                            if (dif.x > 0) {
+                                actor.sprite.setOrigin(16-4,16);
+                            } else {
+                                actor.sprite.setOrigin(16-4,16);
+                            }
+                        } else {
+                            if (dif.y > 0) {
+                                actor.sprite.setOrigin(16,16+4);
+                            } else {
+                                actor.sprite.setOrigin(16,16-4);
+                            }
+                        }
+                    }
                 }
             }
         }

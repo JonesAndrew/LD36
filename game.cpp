@@ -14,7 +14,7 @@ void Actor::takeDamage(int damage,sf::Vector2f p) {
         hp -= damage;
         if (hp <= 0) {
             SoundPlayer::getInstance()->playSound("monsterDyingSFX.wav");
-            if (rand() % 8 == 0) {
+            if (rand() % 6 == 0) {
                 game->actors.push_back(std::make_shared<Heart>(game));
                 game->actors.back()->pos = pos;
             }

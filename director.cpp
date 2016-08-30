@@ -43,6 +43,9 @@ void Director::startWithScene(Scene *scene) {
 
         while (acc > 0) {
             nextScene = current->update();
+            if (nextScene != NULL) {
+                break;
+            }
             acc -= dt;
         }
 

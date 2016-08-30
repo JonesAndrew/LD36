@@ -210,10 +210,14 @@ void Game::transition(int d) {
             nextRoom->pos.x = -480;
         } else {
             roomPos += sf::Vector2i(0,-1);
-            nextRoom = rooms[roomPos.x][roomPos.y];
+            if (roomPos.y < 0) {
+                nextRoom = NULL;
+            } else {
+                nextRoom = rooms[roomPos.x][roomPos.y];
+                nextRoom->pos.y = -480;
+            }
             target.y -= 480;
             startMag = 480;
-            nextRoom->pos.y = -480;
         }
 
         dir = d;
@@ -225,14 +229,19 @@ void Game::shake(int a) {
 }
 
 Game::Game() {
+    done = false;
+
     cord = 1;
 
     gui = TextureLoader::getInstance()->getSprite("heart.png");
 
     title = TextureLoader::getInstance()->getSprite("KasText.png");
 
+    end = TextureLoader::getInstance()->getSprite("endCard.png");
+
     music.setLoop(true);
-    music.openFromFile("sfx/coolingoffhotchillymeal.wav");
+    music.openFromFile("sfx/titleTheme.wav");
+    //music.openFromFile("sfx/coolingoffhotchillymeal.wav");
     music.play();
 
     srand(time(0));
@@ -263,17 +272,63 @@ Game::Game() {
 
     SoundPlayer::getInstance();
 
-    for (int i=0;i<2;i++) {
-        rooms[0][i+1] = new Room(this,"13");
+    for (int i=0;i<16;i++) {
+        rooms[i/4][i%4] = NULL;
     }
 
-    rooms[1][2] = new Room(this,"TitleRoom");
-    rooms[0][0] = new Room(this,"bossroom");
-    rooms[1][3] = new Room(this,"14");
-    rooms[0][3] = new Room(this,"12");
+    if (rand() % 2 == 0) {
+        rooms[0][0] = new Room(this,"TitleRoom");
+        rooms[3][0] = new Room(this,"bossroom");
+        roomPos = sf::Vector2i(0,0);
+    } else {
+        rooms[3][0] = new Room(this,"TitleRoom");
+        rooms[0][0] = new Room(this,"bossroom");
+        roomPos = sf::Vector2i(3,0);
+    }
 
-    roomPos = sf::Vector2i(1,2);
-    room = rooms[1][2];
+    int t = rand() % 4;
+
+    if (t == 0) {
+        rooms[0][1] = new Room(this,"12");
+        rooms[1][1] = new Room(this,"34");
+        rooms[1][2] = new Room(this,"TutorialRoom");
+        rooms[0][2] = new Room(this,"2");
+        rooms[1][3] = new Room(this,"1");
+        rooms[2][2] = new Room(this,"24");
+        rooms[3][2] = new Room(this,"14");
+        rooms[3][1] = new Room(this,"13");
+    } else if (t == 1) {
+        rooms[0][1] = new Room(this,"13");
+        rooms[0][2] = new Room(this,"13");
+        rooms[0][3] = new Room(this,"12");
+        rooms[1][3] = new Room(this,"24");
+        rooms[2][3] = new Room(this,"124");
+        rooms[2][2] = new Room(this,"3");
+        rooms[3][3] = new Room(this,"14");
+        rooms[3][2] = new Room(this,"13");
+        rooms[3][1] = new Room(this,"13");
+    } else if (t == 2) {
+        rooms[0][1] = new Room(this,"12");
+        rooms[1][1] = new Room(this,"34");
+        rooms[1][2] = new Room(this,"12");
+        rooms[2][2] = new Room(this,"34");
+        rooms[2][3] = new Room(this,"12");
+        rooms[3][3] = new Room(this,"14");
+        rooms[3][2] = new Room(this,"13");
+        rooms[3][1] = new Room(this,"13");
+    } else {
+        rooms[0][1] = new Room(this,"12");
+        rooms[1][1] = new Room(this,"234");
+        rooms[2][1] = new Room(this,"4");
+        rooms[1][2] = new Room(this,"12");
+        rooms[2][2] = new Room(this,"34");
+        rooms[2][3] = new Room(this,"12");
+        rooms[3][3] = new Room(this,"14");
+        rooms[3][2] = new Room(this,"13");
+        rooms[3][1] = new Room(this,"13");
+    }
+
+    room = rooms[roomPos.x][roomPos.y];
     nextRoom = nullptr;
 
     transitioning = false;
@@ -297,145 +352,176 @@ Scene *Game::update() {
         woop = false;
     }
 
-    if (player->dead()) {
-        sf::Vector2f dif = player->pos - sf::Vector2f(0,4) - view.getCenter();
-        dif.x /= 50;
-        dif.y /= 50;
-        view.move(dif);
-        view.zoom(0.99);
-        view.rotate(1);
-    }
-    else if (amount != 0) {
-        amount--;
-        if (amount < 0) {
-            amount = 0;
+    if (!done) {
+
+        if (player->dead()) {
+            sf::Vector2f dif = player->pos - sf::Vector2f(0,4) - view.getCenter();
+            dif.x /= 50;
+            dif.y /= 50;
+            view.move(dif);
+            view.zoom(0.99);
+            view.rotate(1);
         }
-
-        float ang = rand() % 1000;
-
-        ang = ang * M_PI / 500;
-
-        view.setCenter((w/2.0)*32+cos(ang)*amount,(h/2.0)*32+sin(ang)*amount);
-    } else if (view.getCenter() != target) {
-        sf::Vector2f dif = target - view.getCenter();
-        
-        double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
-
-        if (mag > startMag-64) {
-            if (dir == 0) {
-                player->pos = sf::Vector2f(11*32 + 16 + (startMag-mag)/2, 4*32 + 16);
-            } else if (dir == 1) {
-                player->pos = sf::Vector2f(32*6 + 16, 7*32 + 16 + (startMag-mag)/2);
-            } else if (dir == 2) {
-                player->pos = sf::Vector2f(48 - (startMag-mag)/2, 4*32 + 16);
-            } else {
-                player->pos = sf::Vector2f(32*6 + 16, 32-(startMag-mag)/4);
-            }
-        } else {
-            if (dir == 0) {
-                if (mag == startMag-64) {
-                    player->pos = sf::Vector2f(12*32 + 16, 4*32 + 16);
-                    player->setIdle("none");
-                    player->playAnimation("leave");
-                }
-                if (mag <= 4*12*4+64) {
-                    player->pos = sf::Vector2f(16 + 480, 4*32 + 16); //+ 16 * (4*12*4 - mag) / 4*12*4);
-                    player->playAnimation("enter");
-                } 
-                if (mag <= 64) {
-                    player->pos = sf::Vector2f(32 - mag/2 + 16 + 480,  4*32 + 16);
-                    player->setIdle("walk");
-                }
-            } else if (dir == 1) {
-                if (mag == startMag-64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16);
-                    player->setIdle("none");
-                    player->playAnimation("leave");
-                }
-                if (mag <= 4*12*4+64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 16 + 480); //+ 16 * (4*12*4 - mag) / 4*12*4);
-                    player->playAnimation("enter");
-                } 
-                if (mag <= 64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 480 + 16 + 16 - mag/4);
-                    player->setIdle("walk");
-                }
-            } else if (dir == 2) {
-                if (mag == startMag-64) {
-                    player->pos = sf::Vector2f(16, 4*32 + 16);
-                    player->setIdle("none");
-                    player->playAnimation("leave");
-                }
-                if (mag <= 4*12*4+64) {
-                    player->pos = sf::Vector2f(12*32 + 16 - 480, 4*32 + 16); //+ 16 * (4*12*4 - mag) / 4*12*4);
-                    player->playAnimation("enter");
-                } 
-                if (mag <= 64) {
-                    player->pos = sf::Vector2f(11*32 + 16 + (mag)/2 - 480,  4*32 + 16);
-                    player->setIdle("walk");
-                }
-            } else {
-                if (mag == startMag-64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 16);
-                    player->setIdle("none");
-                    player->playAnimation("leave");
-                }
-                if (mag <= 4*12*4+64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16 - startMag); //+ 16 * (4*12*4 - mag) / 4*12*4);
-                    player->playAnimation("enter");
-                } 
-                if (mag <= 64) {
-                    player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16 - 32 + mag/2 - startMag);
-                    player->setIdle("walk");
-                }
-            }
-        }
-
-        if (mag <= 4) {
-            view.setCenter((w/2.0)*32,(h/2.0)*32);
-            target = view.getCenter();
-
-            transitioning = false;
-
-            if (dir == 0) {
-                player->pos = sf::Vector2f(48, 4*32 + 16);
-            } else if (dir == 1) {
-                player->pos = sf::Vector2f(32*6 + 16, 32);
-            } else if (dir == 2) {
-                player->pos = sf::Vector2f(11*32 + 16, 4*32 + 16);
-            } else {
-                player->pos = sf::Vector2f(32*6 + 16, 7*32+16);
+        else if (amount != 0) {
+            amount--;
+            if (amount < 0) {
+                amount = 0;
             }
 
-            room = nextRoom;
-            nextRoom = nullptr;
+            float ang = rand() % 1000;
 
-            room->pos = sf::Vector2f(0,0);
+            ang = ang * M_PI / 500;
 
-            int count=rand()%3+1;
-            int bigCount = count + rand()%3;
+            view.setCenter((w/2.0)*32+cos(ang)*amount,(h/2.0)*32+sin(ang)*amount);
+        } else if (view.getCenter() != target) {
+            sf::Vector2f dif = target - view.getCenter();
+            
+            double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
 
-            int c=0;
-
-            if (!room->cleared) {
-                if (room->name == "bossroom") {
-                    actors.push_back(std::make_shared<Doot>(this));
-                    actors.back()->pos = sf::Vector2f(48,32);
-
-                    actors.push_back(std::make_shared<Doot>(this));
-                    actors.back()->pos = sf::Vector2f(12*32+16,32);
-
-                    actors.push_back(std::make_shared<Doot>(this));
-                    actors.back()->pos = sf::Vector2f(48,7*32+16);
-
-                    actors.push_back(std::make_shared<Doot>(this));
-                    actors.back()->pos = sf::Vector2f(12*32+16,7*32+16);
+            if (mag > startMag-64) {
+                if (dir == 0) {
+                    player->pos = sf::Vector2f(11*32 + 16 + (startMag-mag)/2, 4*32 + 16);
+                } else if (dir == 1) {
+                    player->pos = sf::Vector2f(32*6 + 16, 7*32 + 16 + (startMag-mag)/2);
+                } else if (dir == 2) {
+                    player->pos = sf::Vector2f(48 - (startMag-mag)/2, 4*32 + 16);
                 } else {
-                    while (c<count) {
-                        int x = rand() % w;
-                        int y = rand() % h;
+                    player->pos = sf::Vector2f(32*6 + 16, 32-(startMag-mag)/4);
+                }
+            } else {
+                if (dir == 0) {
+                    if (mag == startMag-64) {
+                        player->pos = sf::Vector2f(12*32 + 16, 4*32 + 16);
+                        player->setIdle("none");
+                        player->playAnimation("leave");
+                    }
+                    if (mag <= 4*12*4+64) {
+                        player->pos = sf::Vector2f(16 + 480, 4*32 + 16); //+ 16 * (4*12*4 - mag) / 4*12*4);
+                        player->playAnimation("enter");
+                    } 
+                    if (mag <= 64) {
+                        player->pos = sf::Vector2f(32 - mag/2 + 16 + 480,  4*32 + 16);
+                        player->setIdle("walk");
+                    }
+                } else if (dir == 1) {
+                    if (mag == startMag-64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16);
+                        player->setIdle("none");
+                        player->playAnimation("leave");
+                    }
+                    if (mag <= 4*12*4+64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 16 + 480); //+ 16 * (4*12*4 - mag) / 4*12*4);
+                        player->playAnimation("enter");
+                    } 
+                    if (mag <= 64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 480 + 16 + 16 - mag/4);
+                        player->setIdle("walk");
+                    }
+                } else if (dir == 2) {
+                    if (mag == startMag-64) {
+                        player->pos = sf::Vector2f(16, 4*32 + 16);
+                        player->setIdle("none");
+                        player->playAnimation("leave");
+                    }
+                    if (mag <= 4*12*4+64) {
+                        player->pos = sf::Vector2f(12*32 + 16 - 480, 4*32 + 16); //+ 16 * (4*12*4 - mag) / 4*12*4);
+                        player->playAnimation("enter");
+                    } 
+                    if (mag <= 64) {
+                        player->pos = sf::Vector2f(11*32 + 16 + (mag)/2 - 480,  4*32 + 16);
+                        player->setIdle("walk");
+                    }
+                } else {
+                    if (mag == startMag-64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 16);
+                        player->setIdle("none");
+                        player->playAnimation("leave");
+                    }
+                    if (mag <= 4*12*4+64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16 - startMag); //+ 16 * (4*12*4 - mag) / 4*12*4);
+                        player->playAnimation("enter");
+                    } 
+                    if (mag <= 64) {
+                        player->pos = sf::Vector2f(32*6 + 16, 8*32 + 16 - 32 + mag/2 - startMag);
+                        player->setIdle("walk");
+                    }
+                }
+            }
 
-                        if (room->values[x][y] == 3 || room->values[x][y] == 2) {
+            if (mag <= 4) {
+                view.setCenter((w/2.0)*32,(h/2.0)*32);
+                target = view.getCenter();
+
+                transitioning = false;
+
+                if (dir == 0) {
+                    player->pos = sf::Vector2f(48, 4*32 + 16);
+                } else if (dir == 1) {
+                    player->pos = sf::Vector2f(32*6 + 16, 32);
+                } else if (dir == 2) {
+                    player->pos = sf::Vector2f(11*32 + 16, 4*32 + 16);
+                } else {
+                    player->pos = sf::Vector2f(32*6 + 16, 7*32+16);
+                }
+
+                if (room->name == "TitleRoom") {
+                    music.stop();
+                    music.openFromFile("sfx/coolingoffhotchillymeal.wav");
+                    music.play();
+                    SoundPlayer::getInstance()->playSound("transitionSFX.wav");
+                }
+
+                if (room->name == "bossroom") {
+                    done = true;
+                    return NULL;
+                }
+
+                room = nextRoom;
+                nextRoom = nullptr;
+
+                room->pos = sf::Vector2f(0,0);
+
+                int count=rand()%3+1;
+                int bigCount = count + rand()%3;
+
+                int c=0;
+
+                if (!room->cleared) {
+                    if (room->name == "bossroom") {
+                        actors.push_back(std::make_shared<Doot>(this));
+                        actors.back()->pos = sf::Vector2f(48,32);
+
+                        actors.push_back(std::make_shared<Doot>(this));
+                        actors.back()->pos = sf::Vector2f(12*32+16,32);
+
+                        actors.push_back(std::make_shared<Doot>(this));
+                        actors.back()->pos = sf::Vector2f(48,7*32+16);
+
+                        actors.push_back(std::make_shared<Doot>(this));
+                        actors.back()->pos = sf::Vector2f(12*32+16,7*32+16);
+                    } else {
+                        while (c<count) {
+                            int x = rand() % w;
+                            int y = rand() % h;
+
+                            if (room->values[x][y] == 3 || room->values[x][y] == 2) {
+                                sf::Vector2f p = sf::Vector2f(x*32+16,y*32+16);
+
+                                sf::Vector2f dif = player->pos - p;
+
+                                double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
+
+                                if (mag >= 64) {
+                                    actors.push_back(std::make_shared<Mummy>(this));
+                                    actors.back()->pos = p;
+                                    c++;
+                                }
+                            }
+                        }
+                        while (c<bigCount) {
+                            int x = rand() % w;
+                            int y = rand() % h;
+
                             sf::Vector2f p = sf::Vector2f(x*32+16,y*32+16);
 
                             sf::Vector2f dif = player->pos - p;
@@ -443,100 +529,84 @@ Scene *Game::update() {
                             double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
 
                             if (mag >= 64) {
-                                actors.push_back(std::make_shared<Mummy>(this));
+                                actors.push_back(std::make_shared<Bat>(this));
                                 actors.back()->pos = p;
                                 c++;
                             }
                         }
                     }
-                    while (c<bigCount) {
-                        int x = rand() % w;
-                        int y = rand() % h;
-
-                        sf::Vector2f p = sf::Vector2f(x*32+16,y*32+16);
-
-                        sf::Vector2f dif = player->pos - p;
-
-                        double mag = sqrt(dif.x*dif.x + dif.y*dif.y);
-
-                        if (mag >= 64) {
-                            actors.push_back(std::make_shared<Bat>(this));
-                            actors.back()->pos = p;
-                            c++;
-                        }
-                    }
-                }
-            }
-
-        } else {
-            dif.x /= mag;
-            dif.y /= mag;
-
-            dif.x *= 4;
-            dif.y *= 4;
-
-            view.move(dif);
-        }
-    }
-
-    for (int i=0;i<actors.size();i++) {
-        if (!actors[i]->dead()) {
-            actors[i]->update();
-
-            if (!transitioning)
-                actors[i]->step(true);
-            if (!transitioning && !actors[i]->fly)
-                room->update(*actors[i],true);
-            if (!transitioning)
-                actors[i]->step(false);
-            if (!transitioning && !actors[i]->fly)
-                room->update(*actors[i],false);
-            
-        } else {
-            actors[i]->deadUpdate();
-        }
-    }
-
-    for (auto &spell : spells) {
-        spell.update();
-    }
-    for (int i=0;i<spells.size();i++) {
-        for (int t=i+1;t<spells.size();t++) {
-
-            if (spells[i].anchor == spells[t].anchor && 
-                abs(spells[i].getR() - spells[t].getR()) < 2 &&
-                spells[i].getR() != 0 && spells[t].getR() != 0) {
-
-                if (spells[i].anchor == player) {
-                    shake(5);
                 }
 
-                for (int a=0;a<actors.size();a++) {
-                    if (actors[a]->heart == false) {
-                        if ((spells[i].anchor == player && actors[a] != player) ||
-                            (spells[i].anchor != player && actors[a] == player)) {
-                            spells[i].explode(*actors[a]);
-                        }
-                    }
-                }
+            } else {
+                dif.x /= mag;
+                dif.y /= mag;
 
-                spells[i].kill();
-                spells[t].kill();
-                break;
+                dif.x *= 4;
+                dif.y *= 4;
+
+                view.move(dif);
             }
         }
-    }
-    for (int i=0;i<spells.size();i++) {
-        if (spells[i].getDir() == 0) {
-            spells.erase(spells.begin()+i);
-            i--;
-        }
-    }
 
-    for (int i=0;i<actors.size();i++) {
-        if (actors[i]->destroy()) {
-            actors.erase(actors.begin()+i);
-            i--;
+        for (int i=0;i<actors.size();i++) {
+            if (!actors[i]->dead()) {
+                actors[i]->update();
+
+                if (!transitioning)
+                    actors[i]->step(true);
+                if (!transitioning && !actors[i]->fly)
+                    room->update(*actors[i],true);
+                if (!transitioning)
+                    actors[i]->step(false);
+                if (!transitioning && !actors[i]->fly)
+                    room->update(*actors[i],false);
+                
+            } else {
+                actors[i]->deadUpdate();
+            }
+        }
+
+        for (auto &spell : spells) {
+            spell.update();
+        }
+        for (int i=0;i<spells.size();i++) {
+            for (int t=i+1;t<spells.size();t++) {
+
+                if (spells[i].anchor == spells[t].anchor && 
+                    abs(spells[i].getR() - spells[t].getR()) < 2 &&
+                    spells[i].getR() != 0 && spells[t].getR() != 0) {
+
+                    if (spells[i].anchor == player) {
+                        shake(5);
+                    }
+
+                    for (int a=0;a<actors.size();a++) {
+                        if (actors[a]->heart == false) {
+                            if ((spells[i].anchor == player && actors[a] != player) ||
+                                (spells[i].anchor != player && actors[a] == player)) {
+                                spells[i].explode(*actors[a]);
+                            }
+                        }
+                    }
+
+                    spells[i].kill();
+                    spells[t].kill();
+                    break;
+                }
+            }
+        }
+        for (int i=0;i<spells.size();i++) {
+            if (spells[i].getDir() == 0) {
+                spells.erase(spells.begin()+i);
+                i--;
+            }
+        }
+
+        for (int i=0;i<actors.size();i++) {
+            if (actors[i]->destroy()) {
+                actors.erase(actors.begin()+i);
+                i--;
+            }
         }
     }
     return NULL;
@@ -545,36 +615,41 @@ Scene *Game::update() {
 void Game::render(sf::RenderWindow &window) {
     window.setView(view);
 
-    room->render(window);
-    if (nextRoom != nullptr) {
-        nextRoom->render(window);
-    }
+    if (!done) { 
 
-    std::sort(actors.begin(),actors.end(),PointerCompare());
-
-    for (int i=0;i<actors.size();i++) {
-        actors[i]->render(window);
-    }
-
-    for (auto &spell : spells) {
-        spell.render(window);
-    }
-
-    if (room->name ==  "TitleRoom") {
-        title.setPosition(65,0);
-        window.draw(title);
-    }
-
-    window.setView(guiView);
-
-    for (int i=0;i<3;i++) {
-        if (player->hp > i) {
-            gui.setTextureRect(sf::IntRect(0,0,32,32));
-        } else {
-            gui.setTextureRect(sf::IntRect(32,0,32,32));
+        room->render(window);
+        if (nextRoom != nullptr) {
+            nextRoom->render(window);
         }
-        gui.setPosition(i*24 - 5, 280);
-        window.draw(gui);
+
+        std::sort(actors.begin(),actors.end(),PointerCompare());
+
+        for (int i=0;i<actors.size();i++) {
+            actors[i]->render(window);
+        }
+
+        for (auto &spell : spells) {
+            spell.render(window);
+        }
+
+        if (room->name ==  "TitleRoom") {
+            title.setPosition(65,0);
+            window.draw(title);
+        }
+
+        window.setView(guiView);
+
+        for (int i=0;i<3;i++) {
+            if (player->hp > i) {
+                gui.setTextureRect(sf::IntRect(0,0,32,32));
+            } else {
+                gui.setTextureRect(sf::IntRect(32,0,32,32));
+            }
+            gui.setPosition(i*24 - 5, 280);
+            window.draw(gui);
+        }
+    } else {
+        window.draw(end);
     }
 
     window.setView(window.getDefaultView());

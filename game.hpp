@@ -125,6 +125,7 @@ class Game : public Scene
 
     sf::Sprite gui;
     sf::Sprite title;
+    sf::Sprite end;
 public:
     std::vector<std::shared_ptr<Actor>> actors;
     std::shared_ptr<Player> player;
@@ -132,6 +133,7 @@ public:
     Room *room;
     Room *nextRoom;
     bool transitioning;
+    bool done;
     int dir;
     int cord;
 
@@ -821,32 +823,34 @@ public:
     int values[w][h];
 
     void open() {
-        if (!o) {
-            SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
-        }
+        if (name != "bossroom") {
+            if (!o) {
+                SoundPlayer::getInstance()->playSound("somethingHeavyMovesSFX.wav");
+            }
 
-        for (int x=0;x<w;x++) {
-            for (int y=0;y<h;y++) {
-                if (values[x][y] == 24) {
-                    values[x][y] = 12;
-                }
+            for (int x=0;x<w;x++) {
+                for (int y=0;y<h;y++) {
+                    if (values[x][y] == 24) {
+                        values[x][y] = 12;
+                    }
 
-                if (values[x][y] == 27) {
-                    values[x][y] = 13;
-                }
+                    if (values[x][y] == 27) {
+                        values[x][y] = 13;
+                    }
 
-                if (values[x][y] == 35) {
-                    values[x][y] = 15;
-                }
+                    if (values[x][y] == 35) {
+                        values[x][y] = 15;
+                    }
 
-                if (values[x][y] == 32) {
-                    values[x][y] = 14;
+                    if (values[x][y] == 32) {
+                        values[x][y] = 14;
+                    }
                 }
             }
-        }
 
-        o = true;
-        cleared = true;
+            o = true;
+            cleared = true;
+        }
     }
 
     void close() {
@@ -931,7 +935,7 @@ public:
         }
 
         o = true;
-        cleared = false;
+        cleared = true;
         // open();
     }
 

@@ -62,7 +62,7 @@ void Player::update() {
             if (breakCount > 104) {
                 breaking = true;
                 playAnimation("break");
-                breakCount = fmin(104,8*12);
+                breakCount = fmin(104,6*12);
 
                 SoundPlayer::getInstance()->clearSounds();
                 SoundPlayer::getInstance()->playSound("stringBreakSFX.wav");
@@ -174,6 +174,11 @@ void Enemy::update() {
 
 void Game::transition(int d) {
     if (transitioning == false) {
+        if (room->name == "TitleRoom") {
+            music.stop();
+            SoundPlayer::getInstance()->playSound("transitionSFX.wav");
+        }
+
         amount = 0;
         transitioning = true;
 
@@ -256,7 +261,7 @@ Game::Game() {
 
     player = std::make_shared<Player>(this);
     actors.push_back(player);
-    actors.back()->pos = sf::Vector2f(48,7*32+16);
+    actors.back()->pos = sf::Vector2f(6*32+16,5*32+16);
     // actors.push_back(std::make_shared<Mummy>(this));
     // actors.back()->pos = sf::Vector2f(150,200);
 
@@ -465,10 +470,8 @@ Scene *Game::update() {
                 }
 
                 if (room->name == "TitleRoom") {
-                    music.stop();
                     music.openFromFile("sfx/mainMusic.wav");
                     music.play();
-                    SoundPlayer::getInstance()->playSound("transitionSFX.wav");
                 }
 
                 if (room->name == "bossroom") {

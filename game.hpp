@@ -350,8 +350,6 @@ public:
         animations["break"].emplace_back(96,64,32,32);
         animations["break"].emplace_back(0,96,32,32);
         animations["break"].emplace_back(32,96,32,32);
-        animations["break"].emplace_back(64,96,32,32);
-        animations["break"].emplace_back(96,96,32,32);
 
         animations["fall"].emplace_back(96,4*32,32,32);
         animations["fall"].emplace_back(0 ,5*32,32,32);
@@ -508,6 +506,8 @@ public:
                 game->player->hp = 3;
             }
             remove = true;
+
+            SoundPlayer::getInstance()->playSound("getheartSFX.wav");
         }
     }
 };

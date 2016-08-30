@@ -633,7 +633,7 @@ public:
 
         sleep = 10;
 
-        hp = 3;
+        hp = 2;
 
         goal = attacking;
 

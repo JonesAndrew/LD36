@@ -708,6 +708,8 @@ class Doot : public Enemy {
     Goal goal;
 public:
 
+    virtual void takeDamage(int damage,sf::Vector2f p);
+
     Doot(Game *g) : Enemy(g) {
         sprite = TextureLoader::getInstance()->getSprite("doot.png");
         sprite.setOrigin(24,32);

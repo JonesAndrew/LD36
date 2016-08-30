@@ -35,6 +35,32 @@ void Actor::takeDamage(int damage,sf::Vector2f p) {
     }
 }
 
+void Doot::takeDamage(int damage,sf::Vector2f p) {
+    if (hp > 0) {
+        hp -= damage;
+        if (hp <= 0) {
+            SoundPlayer::getInstance()->playSound("monsterDyingSFX.wav");
+            if (rand() % 1 == 0) {
+                game->actors.push_back(std::make_shared<Heart>(game));
+                game->actors.back()->pos = pos;
+            }
+        } else {
+            SoundPlayer::getInstance()->playSound("monsterHurtSFX.wav");
+
+            sf::Vector2f dif = pos - p;
+            double mag = sqrt(dif.x * dif.x + dif.y * dif.y);
+
+            dif.x /= mag;
+            dif.y /= mag;
+
+            kb = dif;
+
+            kb.x *= 3;
+            kb.y *= 3;
+        }
+    }
+}
+
 void Game::handleEvent(sf::Event event) {
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Space && !transitioning && !player->dead() && !player->breaking) {

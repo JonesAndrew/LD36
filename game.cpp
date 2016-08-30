@@ -488,7 +488,7 @@ Scene *Game::update() {
                 room->pos = sf::Vector2f(0,0);
 
                 int count=rand()%3+1;
-                int bigCount = count + rand()%3;
+                int bigCount = rand()%5;
 
                 int c=0;
 

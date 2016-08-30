@@ -935,7 +935,7 @@ public:
         }
 
         o = true;
-        cleared = true;
+        cleared = false;
         // open();
     }
 

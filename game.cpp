@@ -466,13 +466,16 @@ Scene *Game::update() {
 
                 if (room->name == "TitleRoom") {
                     music.stop();
-                    music.openFromFile("sfx/coolingoffhotchillymeal.wav");
+                    music.openFromFile("sfx/mainMusic.wav");
                     music.play();
                     SoundPlayer::getInstance()->playSound("transitionSFX.wav");
                 }
 
                 if (room->name == "bossroom") {
                     done = true;
+                    music.stop();
+                    music.openFromFile("sfx/DanceyDungeon.wav");
+                    music.play();
                     return NULL;
                 }
 
@@ -488,6 +491,10 @@ Scene *Game::update() {
 
                 if (!room->cleared) {
                     if (room->name == "bossroom") {
+                        music.stop();
+                        music.openFromFile("sfx/DootDoot.wav");
+                        music.play();
+
                         actors.push_back(std::make_shared<Doot>(this));
                         actors.back()->pos = sf::Vector2f(48,32);
 
